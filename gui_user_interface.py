@@ -28,13 +28,12 @@ class BeverageListWindow:
             ],
             [
                 sg.Button("Load CSV", key="-load_csv-"),
-                sg.Button("Add New Beverage", key="-open_add_new"),
+                sg.Button("Add New Beverage", key="-open_add_new-"),
                 sg.Input("", key="-search_id-"),
                 sg.Button("search", key="-search_button-"),
             ],
             [sg.Button("Exit")],
         ]
-
         self.window = sg.Window("Beverage List", layout)
 
     def run(self):
@@ -72,7 +71,7 @@ class BeverageListWindow:
         except EOFError:
             sg.popup_error("The file was unchanged.")
 
-    def on_open_add_new(self, event, values):
+    def _on_open_add_new(self, event, values):
         """Open a new window to allow adding a new beverage"""
         add_window = BeverageAddWindow(self.beverage_collection)
         add_window.run()
@@ -80,6 +79,13 @@ class BeverageListWindow:
 
     def _on_search(self, event, values):
         """Handle when user is searching for an item"""
+        search_query = values["-search_id-"]
+        beverage = self.beverage_collection.find_by_id(search_query)
+        if beverage:
+            result_window = BeverageResultWindow(beverage)
+            result_window.run()
+        else:
+            sg.popup_error("Cannot find a beverage with that id.")
 
     def _update_output(self, event, values):
         """Update then contents of the output box"""
@@ -106,17 +112,13 @@ class BeverageAddWindow:
                     default=True,
                 )
             ],
-            [
-                sg.Radio(
-                    "Inactive", 
-                    "beverage_active_group", 
-                    key="-beverage_inactive-"
-                )
+            [sg.Radio(
+                "Inactive", 
+                "beverage_active_group", 
+                key="-beverage_inactive-")
             ],
-            [
-                sg.Button("Add", key="-add_new-"),
-                sg.Button("Cancel", key="-cancel-"),
-            ],
+            [sg.Button("Add", key="-add_new-")],
+            [sg.Button("Cancel", key="-cancel-")],
         ]
         self.window = sg.Window("Beverage Add", layout)
 
@@ -142,5 +144,63 @@ class BeverageAddWindow:
             values["-name-"],
             values["-pack-"],
             float(values["-price-"]), # Not good practice
-            values["-beverage_active-"] is True,
+            bool(values["-beverage_active-"]),
         )
+
+class BeverageResultWindow:
+    """Simple Beverage Result"""
+
+    def __init__(self, beverage):
+        """Constructor"""
+
+        active_value = beverage.active
+        inactive_value = not beverage.active
+
+        layout = [
+            [
+                sg.Text("Name", size=(8,1)),
+                sg.Input(key="-id-", default_text=beverage.name, disabled=True)
+            ],
+            [
+                sg.Text("Name", size=(8,1)),
+                sg.Input(key="-name-", default_text=beverage.name, disabled=True)
+            ],
+            [
+                sg.Text("Pack", size=(8,1)),
+                sg.Input(key="-pack-", default_text=beverage.name, disabled=True)
+            ],
+            [
+                sg.Text("Price", size=(8,1)),
+                sg.Input(key="-price-", default_text=beverage.name, disabled=True)
+            ],
+            [
+                sg.Radio(
+                    "Active", 
+                    "beverage_active_group", 
+                    key="-beverage_active-"
+                )
+            ],
+            [
+                sg.Radio(
+                    "Inactive", 
+                    "beverage_active_group", 
+                    key="-beverage_inactive-"
+                )
+            ],
+            [
+                sg.Button("Close", key="-close-"),
+            ],
+        ]
+        self.window = sg.Window("Beverage List", layout, modal=True)
+
+    def run(self):
+        """Start the window"""
+        self._run_loop()
+        self.window.close()
+
+    def _run_loop(self):
+        """Run the Event loop"""
+        while True:
+            event, values = self.window.read()
+            if event == sg.WINDOW_CLOSED or event == "-close-":
+                break
